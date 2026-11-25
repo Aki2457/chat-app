@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Admin</title>
+  <style>
+    :root { --bg:#f4f6fb; --panel:#fff; --border:#e5e7eb; --text:#1f2937; --muted:#6b7280; --accent:#4f46e5; --accent-hover:#4338ca; --danger:#dc2626; --danger-bg:#fef2f2; --ok:#16a34a; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .top h1 { font-size: 1.6rem; letter-spacing: -.02em; }
+    .top p { color: var(--muted); font-size: .95rem; margin-top: 2px; }
+    .links { display: flex; gap: 10px; align-items: center; }
+    .link { color: var(--accent); text-decoration: none; font-weight: 600; font-size: .9rem; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 4px 18px rgba(15,23,42,.04); overflow: hidden; margin-bottom: 20px; }
+    .panel-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .panel-head h2 { font-size: 1.05rem; }
+    .panel-head .sub { font-size: .85rem; color: var(--muted); margin-top: 2px; }
+    .panel-body { padding: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: .85rem; font-weight: 600; }
+    input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 10px; font: inherit; font-size: .95rem; }
+    textarea { min-height: 90px; resize: vertical; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .btn { border: none; border-radius: 10px; padding: 10px 14px; font: inherit; font-weight: 600; cursor: pointer; font-size: .9rem; }
+    .btn.primary { background: var(--accent); color: #fff; } .btn.primary:hover { background: var(--accent-hover); }
+    .btn.ghost { background: #f3f4f6; color: var(--text); } .btn.ghost:hover { background: #e5e7eb; }
+    .btn.danger { background: var(--danger-bg); color: var(--danger); } .btn.danger:hover { background: #fee2e2; }
+    .btn.small { padding: 7px 10px; font-size: .82rem; border-radius: 8px; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .note { font-size: .84rem; color: var(--muted); line-height: 1.45; }
+    .note a { color: var(--accent); }
+    .msg-bar { padding: 10px 14px; border-radius: 10px; font-size: .9rem; margin-bottom: 14px; display: none; }
+    .msg-bar.show { display: block; }
+    .msg-bar.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .msg-bar.ok { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: .9rem; vertical-align: top; }
+    th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; background: #fbfcff; }
+    .muted { color: var(--muted); }
+    .pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+    .pill.on { background: #dcfce7; color: #166534; } .pill.off { background: #fee2e2; color: #991b1b; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .83rem; }
+    .table-wrap { overflow-x: auto; }
+    .empty { padding: 20px 10px; color: var(--muted); font-size: .9rem; }
+    .login { max-width: 460px; margin: 60px auto; }
+    .hidden { display: none !important; }
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .panel-body, .panel-head { padding: 16px; }
+      th, td { padding: 10px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>Chat Admin</h1>
+        <p>Manage AI agents, bans, and chat moderation.</p>
+      </div>
+      <div class="links">
+        <a class="link" href="/">← Back to chat</a>
+        <button class="btn ghost small hidden" id="logoutBtn">Log out</button>
+      </div>
+    </div>
+
+    <div id="statusBar" class="msg-bar"></div>
+
+    <div class="panel login" id="loginPanel">
+      <div class="panel-head"><div><h2>Admin access</h2><div class="sub">Enter the admin password to continue.</div></div></div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="passwordInput">Admin password</label>
+          <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Password">
+        </div>
+        <div class="row" style="margin-top:14px;">
+          <button class="btn primary" id="loginBtn">Unlock admin</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="adminContent" class="hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>Users</h2><div class="sub">See known chat display names and whether they are active. “Remove” blocks the username from sending new messages; existing messages remain.</div></div>
+          <button class="btn ghost small" id="refreshUsersBtn" type="button">Refresh</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>User</th><th>Presence</th><th>Last seen</th><th>Action</th></tr></thead>
+              <tbody id="usersBody"><tr><td colspan="4" class="empty">Loading users…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="note" style="margin-top:10px">Online means the chat page has checked in within the last 75 seconds. Presence uses display names, not verified accounts.</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>AI Agents</h2>
+            <div class="sub">Invite AI agents with an Arena Platform API key. Mention an agent with @handle in chat to activate it.</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <p class="note" style="margin-bottom:14px;">Supports <strong>Arena</strong>, <strong>OpenRouter</strong>, <strong>OpenAI</strong>, and any OpenAI-compatible gateway. Pick a provider preset or enter a custom base URL. Keys are stored server-side and never exposed to chat users. On @mention, the app calls <span class="mono">&lt;base_url&gt;/chat/completions</span>.</p>
+          <div class="grid" style="margin-bottom:14px;">
+            <div class="field">
+              <label for="agentHandle">Handle</label>
+              <input id="agentHandle" placeholder="e.g. helper_bot" maxlength="32">
+            </div>
+            <div class="field">
+              <label for="agentName">Display name</label>
+              <input id="agentName" placeholder="e.g. Helper Bot" maxlength="60">
+            </div>
+            <div class="field">
+              <label for="agentModel">Model</label>
+              <input id="agentModel" placeholder="coding-router-preview" value="coding-router-preview">
+            </div>
+            <div class="field">
+              <label for="agentKey">API key</label>
+              <input id="agentKey" type="password" placeholder="Arena / OpenAI-compatible API key">
+            </div>
+            <div class="field">
+              <label for="agentProvider">Provider preset</label>
+              <select id="agentProvider">
+                <option value="arena">Arena Platform</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="openai">OpenAI</option>
+                <option value="custom">Custom OpenAI-compatible</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="agentBaseUrl">API Base URL</label>
+              <input id="agentBaseUrl" placeholder="https://api.arena.ai/v1" value="https://api.arena.ai/v1">
+            </div>
+            <div class="field full">
+              <label for="agentPrompt">System prompt</label>
+              <textarea id="agentPrompt" placeholder="You are a helpful assistant in this chat room...">You are a helpful assistant in a shared chat room. Be concise, friendly, and useful.</textarea>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:18px;">
+            <button class="btn primary" id="addAgentBtn">Add agent</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Agent</th><th>Gateway / Model</th><th>API key</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="agentsBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>System notifications & updates</h2>
+            <div class="sub">Send custom notifications, changelogs, or update progress popups. New active notifications ring for users.</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="grid" style="margin-bottom:14px;">
+            <div class="field">
+              <label for="snKind">Type</label>
+              <select id="snKind"><option value="custom">Custom notification</option><option value="changelog">Changelog</option><option value="update">Update progress</option></select>
+            </div>
+            <div class="field">
+              <label for="snProgress">Progress % (for updates)</label>
+              <input id="snProgress" type="number" min="0" max="100" placeholder="e.g. 40">
+            </div>
+            <div class="field full">
+              <label for="snTitle">Title</label>
+              <input id="snTitle" placeholder="e.g. New update shipped" maxlength="120">
+            </div>
+            <div class="field full">
+              <label for="snMessage">Message / changelog</label>
+              <textarea id="snMessage" placeholder="Describe what changed or what is happening..." maxlength="2000"></textarea>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:18px;">
+            <button class="btn primary" id="sendSnBtn">Publish notification</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Type</th><th>Message</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="snBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Apps</h2>
+            <div class="sub">Enable or disable chat apps (games, whiteboard, info, timer).</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="grid" style="margin-bottom:14px;">
+            <div class="field"><label><input type="checkbox" id="appEnabled" checked> Apps enabled (master)</label></div>
+            <div class="field"><label><input type="checkbox" id="appWhiteboard" checked> Whiteboard</label></div>
+            <div class="field"><label><input type="checkbox" id="appGames" checked> Games</label></div>
+            <div class="field"><label><input type="checkbox" id="appInfo" checked> Info Board</label></div>
+            <div class="field"><label><input type="checkbox" id="appPolls" checked> Focus Timer / Bars</label></div>
+          </div>
+          <div class="row"><button class="btn primary" id="saveAppsBtn">Save app settings</button></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Admin Users · Send as</h2>
+            <div class="sub">Post a chat message using the Server identity, a registered AI agent, or a named person.</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <p class="note" style="margin-bottom:14px;">AI send-as posts a message under that agent’s name and AI badge; it is written by the admin and does not invoke the agent’s model.</p>
+          <div class="grid" style="margin-bottom:14px;">
+            <div class="field">
+              <label for="sendAsType">Send as</label>
+              <select id="sendAsType"><option value="server">[Server]</option><option value="ai">AI agent</option><option value="person">Person</option></select>
+            </div>
+            <div class="field hidden" id="sendAsAgentField">
+              <label for="sendAsAgent">AI identity</label>
+              <select id="sendAsAgent"><option value="">No enabled agents</option></select>
+            </div>
+            <div class="field hidden" id="sendAsPersonField">
+              <label for="sendAsPerson">Person display name</label>
+              <input id="sendAsPerson" maxlength="40" placeholder="e.g. Community Manager">
+            </div>
+            <div class="field full">
+              <label for="sendAsMessage">Message</label>
+              <textarea id="sendAsMessage" maxlength="1000" placeholder="Write the message to post in #general..."></textarea>
+            </div>
+          </div>
+          <div class="row"><button class="btn primary" id="sendAsBtn">Send message</button></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>System message</h2>
+            <div class="sub">Send a plain message as <strong>[System]</strong> to the chat room.</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="field" style="margin-bottom:14px;">
+            <label for="systemMsg">Message</label>
+            <textarea id="systemMsg" placeholder="e.g. Chat maintenance in 10 minutes." maxlength="1000"></textarea>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="sendSystemBtn">Send system message</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Bans</h2>
+            <div class="sub">Block usernames from sending messages.</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="grid" style="margin-bottom:14px;">
+            <div class="field">
+              <label for="banUsername">Username</label>
+              <input id="banUsername" placeholder="username to ban" maxlength="40">
+            </div>
+            <div class="field">
+              <label for="banReason">Reason (optional)</label>
+              <input id="banReason" placeholder="Reason" maxlength="200">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:18px;">
+            <button class="btn danger" id="addBanBtn">Ban user</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Username</th><th>Reason</th><th>Created</th><th>Actions</th></tr></thead>
+              <tbody id="bansBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const statusBar = document.getElementById('statusBar');
+    const loginPanel = document.getElementById('loginPanel');
+    const adminContent = document.getElementById('adminContent');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const usersBody = document.getElementById('usersBody');
+    const refreshUsersBtn = document.getElementById('refreshUsersBtn');
+
+    const agentHandle = document.getElementById('agentHandle');
+    const agentName = document.getElementById('agentName');
+    const agentModel = document.getElementById('agentModel');
+    const agentKey = document.getElementById('agentKey');
+    const agentProvider = document.getElementById('agentProvider');
+    const agentBaseUrl = document.getElementById('agentBaseUrl');
+    const agentPrompt = document.getElementById('agentPrompt');
+    const sendAsType = document.getElementById('sendAsType');
+    const sendAsAgentField = document.getElementById('sendAsAgentField');
+    const sendAsAgent = document.getElementById('sendAsAgent');
+    const sendAsPersonField = document.getElementById('sendAsPersonField');
+    const sendAsPerson = document.getElementById('sendAsPerson');
+    const sendAsMessage = document.getElementById('sendAsMessage');
+    const sendAsBtn = document.getElementById('sendAsBtn');
+
+    const PROVIDERS = {
+      arena: { base: 'https://api.arena.ai/v1', model: 'coding-router-preview', keyPlaceholder: 'Arena Platform API key' },
+      openrouter: { base: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o-mini', keyPlaceholder: 'OpenRouter API key' },
+      openai: { base: 'https://api.openai.com/v1', model: 'gpt-4o-mini', keyPlaceholder: 'OpenAI API key' },
+      custom: { base: '', model: '', keyPlaceholder: 'API key' }
+    };
+    agentProvider.addEventListener('change', () => {
+      const p = PROVIDERS[agentProvider.value] || PROVIDERS.custom;
+      if (p.base) agentBaseUrl.value = p.base;
+      if (p.model && (agentModel.value === '' || Object.values(PROVIDERS).some(x => x.model === agentModel.value))) agentModel.value = p.model;
+      agentKey.placeholder = p.keyPlaceholder || 'API key';
+    });
+    const addAgentBtn = document.getElementById('addAgentBtn');
+    const agentsBody = document.getElementById('agentsBody');
+
+    const banUsername = document.getElementById('banUsername');
+    const banReason = document.getElementById('banReason');
+    const addBanBtn = document.getElementById('addBanBtn');
+    const bansBody = document.getElementById('bansBody');
+
+    let adminPassword = sessionStorage.getItem('chat-admin-pw') || '';
+    let cachedAgents = [];
+
+    function showStatus(msg, type='ok') {
+      statusBar.textContent = msg;
+      statusBar.className = 'msg-bar show ' + (type === 'error' ? 'error' : 'ok');
+      clearTimeout(showStatus._t);
+      showStatus._t = setTimeout(() => { statusBar.className = 'msg-bar'; }, 4000);
+    }
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    async function api(path, opts={}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword, ...(opts.headers||{}) },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || ('Request failed: ' + res.status));
+      return data;
+    }
+
+    function renderSendAsAgentOptions() {
+      const enabled = cachedAgents.filter(a => a.enabled);
+      sendAsAgent.innerHTML = enabled.length ? enabled.map(a => `<option value="${esc(a.handle)}">${esc(a.name)} (@${esc(a.handle)})</option>`).join('') : '<option value="">No enabled agents</option>';
+    }
+
+    async function loadAgents() {
+      const data = await api('/api/admin-agents');
+      const agents = data.agents || [];
+      cachedAgents = agents;
+      renderSendAsAgentOptions();
+      if (agents.length === 0) {
+        agentsBody.innerHTML = '<tr><td colspan="5" class="empty">No agents yet. Add one above.</td></tr>';
+        return;
+      }
+      agentsBody.innerHTML = agents.map(a => `
+        <tr>
+          <td><div><strong>${esc(a.name)}</strong></div><div class="muted mono">@${esc(a.handle)}</div></td>
+          <td><div class="mono" style="font-size:.8rem;word-break:break-all">${esc(a.api_base_url || 'https://api.arena.ai/v1')}</div><div class="muted mono" style="margin-top:2px">${esc(a.model || '')}</div></td>
+          <td class="mono muted">${esc(a.arena_api_key_preview || '—')}</td>
+          <td><span class="pill ${a.enabled ? 'on' : 'off'}">${a.enabled ? 'Enabled' : 'Disabled'}</span></td>
+          <td>
+            <div class="row">
+              <button class="btn ghost small" data-action="toggle" data-id="${esc(a.id)}" data-enabled="${a.enabled ? '1' : '0'}">${a.enabled ? 'Disable' : 'Enable'}</button>
+              <button class="btn danger small" data-action="delete" data-id="${esc(a.id)}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadUsers() {
+      const data = await api('/api/admin-users');
+      const users = data.users || [];
+      if (!users.length) { usersBody.innerHTML = '<tr><td colspan="4" class="empty">Nobody is online right now.</td></tr>'; return; }
+      usersBody.innerHTML = users.map(u => `<tr>
+        <td><strong>${esc(u.username)}</strong></td>
+        <td>${u.banned ? '<span class="pill off">Banned</span>' : u.online ? '<span class="pill on">Online</span>' : '<span class="pill off">Offline</span>'}</td>
+        <td class="muted">${new Date(u.last_seen).toLocaleTimeString()}</td>
+        <td>${u.banned ? '<span class="muted">Already blocked</span>' : `<button class="btn danger small" data-remove-user="${esc(u.username)}">Remove from chat</button>`}</td>
+      </tr>`).join('');
+    }
+
+    async function loadBans() {
+      const data = await api('/api/admin-bans');
+      const bans = data.bans || [];
+      if (bans.length === 0) {
+        bansBody.innerHTML = '<tr><td colspan="4" class="empty">No bans.</td></tr>';
+        return;
+      }
+      bansBody.innerHTML = bans.map(b => `
+        <tr>
+          <td><strong>${esc(b.username)}</strong></td>
+          <td class="muted">${esc(b.reason || '—')}</td>
+          <td class="muted">${new Date(b.created_at).toLocaleString()}</td>
+          <td><button class="btn ghost small" data-ban-delete="${esc(b.id)}">Remove</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadAll() {
+      await Promise.all([loadUsers(), loadAgents(), loadBans(), loadSystemNotifications(), loadAppSettings()]);
+    }
+
+    async function tryLogin() {
+      adminPassword = passwordInput.value;
+      if (!adminPassword) return;
+      loginBtn.disabled = true;
+      try {
+        await loadAll();
+        sessionStorage.setItem('chat-admin-pw', adminPassword);
+        loginPanel.classList.add('hidden');
+        adminContent.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+        showStatus('Admin unlocked.');
+      } catch (e) {
+        adminPassword = '';
+        sessionStorage.removeItem('chat-admin-pw');
+        showStatus(e.message || 'Login failed', 'error');
+      } finally {
+        loginBtn.disabled = false;
+      }
+    }
+
+    loginBtn.addEventListener('click', tryLogin);
+    passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+    logoutBtn.addEventListener('click', () => {
+      adminPassword = '';
+      sessionStorage.removeItem('chat-admin-pw');
+      adminContent.classList.add('hidden');
+      loginPanel.classList.remove('hidden');
+      logoutBtn.classList.add('hidden');
+      passwordInput.value = '';
+    });
+
+    refreshUsersBtn.addEventListener('click', async () => {
+      refreshUsersBtn.disabled = true;
+      try { await loadUsers(); showStatus('User list refreshed.'); }
+      catch(e) { showStatus(e.message, 'error'); }
+      finally { refreshUsersBtn.disabled = false; }
+    });
+    usersBody.addEventListener('click', async e => {
+      const btn=e.target.closest('button[data-remove-user]');
+      if(!btn) return;
+      const username=btn.dataset.removeUser;
+      if(!confirm(`Remove ${username} from chat? This will ban the username from sending new messages; existing messages will stay.`)) return;
+      btn.disabled=true;
+      try {
+        await api('/api/admin-bans',{method:'POST',body:JSON.stringify({username,reason:'Removed from chat by admin'})});
+        showStatus(`${username} is now blocked from sending messages.`);
+        await Promise.all([loadUsers(),loadBans()]);
+      } catch(err) { showStatus(err.message,'error'); }
+      finally { btn.disabled=false; }
+    });
+
+    addAgentBtn.addEventListener('click', async () => {
+      const handle = agentHandle.value.trim().toLowerCase();
+      const name = agentName.value.trim();
+      const model = agentModel.value.trim() || 'coding-router-preview';
+      const arena_api_key = agentKey.value.trim();
+      const api_base_url = agentBaseUrl.value.trim() || 'https://api.arena.ai/v1';
+      const system_prompt = agentPrompt.value.trim();
+      if (!handle || !name || !arena_api_key) { showStatus('Handle, name, and API key are required.', 'error'); return; }
+      addAgentBtn.disabled = true;
+      try {
+        await api('/api/admin-agents', { method: 'POST', body: JSON.stringify({ handle, name, model, arena_api_key, api_base_url, system_prompt }) });
+        agentHandle.value = ''; agentName.value = ''; agentKey.value = ''; agentProvider.value = 'arena'; agentBaseUrl.value = 'https://api.arena.ai/v1'; agentModel.value = 'coding-router-preview'; agentPrompt.value = 'You are a helpful assistant in a shared chat room. Be concise, friendly, and useful.';
+        showStatus('Agent added.');
+        await loadAgents();
+      } catch (e) { showStatus(e.message, 'error'); }
+      finally { addAgentBtn.disabled = false; }
+    });
+
+    agentsBody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      btn.disabled = true;
+      try {
+        if (action === 'toggle') {
+          const enabled = btn.dataset.enabled !== '1';
+          await api('/api/admin-agents', { method: 'PATCH', body: JSON.stringify({ id, enabled }) });
+          showStatus(enabled ? 'Agent enabled.' : 'Agent disabled.');
+        } else if (action === 'delete') {
+          if (!confirm('Delete this agent?')) { btn.disabled = false; return; }
+          await api('/api/admin-agents', { method: 'DELETE', body: JSON.stringify({ id }) });
+          showStatus('Agent deleted.');
+        }
+        await loadAgents();
+      } catch (e2) { showStatus(e2.message, 'error'); }
+      finally { btn.disabled = false; }
+    });
+
+    function updateSendAsFields() {
+      sendAsAgentField.classList.toggle('hidden', sendAsType.value !== 'ai');
+      sendAsPersonField.classList.toggle('hidden', sendAsType.value !== 'person');
+    }
+    sendAsType.addEventListener('change', updateSendAsFields);
+    updateSendAsFields();
+    sendAsBtn.addEventListener('click', async () => {
+      const mode=sendAsType.value;
+      const message=sendAsMessage.value.trim();
+      if (!message) { showStatus('Message is required.', 'error'); return; }
+      if (mode==='person' && !sendAsPerson.value.trim()) { showStatus('Enter the person display name.', 'error'); return; }
+      if (mode==='ai' && !sendAsAgent.value) { showStatus('Add or enable an AI agent first.', 'error'); return; }
+      sendAsBtn.disabled=true;
+      try {
+        const body={ as:mode, content:message };
+        if (mode==='person') body.username=sendAsPerson.value.trim();
+        if (mode==='ai') body.agent_handle=sendAsAgent.value;
+        await api('/api/admin-send-as',{ method:'POST', body:JSON.stringify(body) });
+        sendAsMessage.value='';
+        showStatus(mode==='server' ? 'Message sent as [Server].' : mode==='ai' ? 'Message sent as AI agent.' : 'Message sent as person.');
+      } catch(e) { showStatus(e.message,'error'); }
+      finally { sendAsBtn.disabled=false; }
+    });
+
+    const snKind = document.getElementById('snKind');
+    const snProgress = document.getElementById('snProgress');
+    const snTitle = document.getElementById('snTitle');
+    const snMessage = document.getElementById('snMessage');
+    const sendSnBtn = document.getElementById('sendSnBtn');
+    const snBody = document.getElementById('snBody');
+    const appEnabled = document.getElementById('appEnabled');
+    const appWhiteboard = document.getElementById('appWhiteboard');
+    const appGames = document.getElementById('appGames');
+    const appInfo = document.getElementById('appInfo');
+    const appPolls = document.getElementById('appPolls');
+    const saveAppsBtn = document.getElementById('saveAppsBtn');
+
+    async function loadSystemNotifications() {
+      const data = await api('/api/admin-system-notifications');
+      const items = data.notifications || [];
+      if (!items.length) { snBody.innerHTML = '<tr><td colspan="4" class="empty">No system notifications yet.</td></tr>'; return; }
+      snBody.innerHTML = items.map(n => `
+        <tr>
+          <td><span class="pill on">${esc(n.kind)}</span></td>
+          <td><div><strong>${esc(n.title || '(no title)')}</strong></div><div class="muted" style="font-size:.83rem">${esc(n.message || '')}${n.progress !== null && n.progress !== undefined ? ` <span class="mono">(${n.progress}%)</span>` : ''}</div></td>
+          <td>${n.active ? '<span class="pill on">Active</span>' : '<span class="pill off">Inactive</span>'}</td>
+          <td>${n.active ? `<button class="btn ghost small" data-sn-deactivate="${n.id}">Deactivate</button>` : '<span class="muted">—</span>'}</td>
+        </tr>`).join('');
+    }
+
+    async function loadAppSettings() {
+      const data = await api('/api/admin-settings');
+      const apps = (data.settings && data.settings.apps) || {};
+      appEnabled.checked = apps.enabled !== false;
+      appWhiteboard.checked = apps.whiteboard !== false;
+      appGames.checked = apps.games !== false;
+      appInfo.checked = apps.info !== false;
+      appPolls.checked = apps.polls !== false;
+    }
+
+    sendSnBtn.addEventListener('click', async () => {
+      const message = snMessage.value.trim();
+      if (!message) { showStatus('Notification message is required.', 'error'); return; }
+      sendSnBtn.disabled = true;
+      try {
+        await api('/api/admin-system-notifications', { method: 'POST', body: JSON.stringify({ kind: snKind.value, title: snTitle.value.trim(), message, progress: snProgress.value }) });
+        snTitle.value = ''; snMessage.value = ''; snProgress.value = '';
+        showStatus('System notification published.');
+        await loadSystemNotifications();
+      } catch (e) { showStatus(e.message, 'error'); }
+      finally { sendSnBtn.disabled = false; }
+    });
+
+    snBody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-sn-deactivate]');
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        await api('/api/admin-system-notifications', { method: 'PATCH', body: JSON.stringify({ id: Number(btn.dataset.snDeactivate), active: false }) });
+        showStatus('Notification deactivated.');
+        await loadSystemNotifications();
+      } catch (err) { showStatus(err.message, 'error'); }
+      finally { btn.disabled = false; }
+    });
+
+    saveAppsBtn.addEventListener('click', async () => {
+      saveAppsBtn.disabled = true;
+      try {
+        await api('/api/admin-settings', { method: 'POST', body: JSON.stringify({ key: 'apps', value: { enabled: appEnabled.checked, whiteboard: appWhiteboard.checked, games: appGames.checked, info: appInfo.checked, polls: appPolls.checked } }) });
+        showStatus('App settings saved.');
+      } catch (e) { showStatus(e.message, 'error'); }
+      finally { saveAppsBtn.disabled = false; }
+    });
+
+    const systemMsg = document.getElementById('systemMsg');
+    const sendSystemBtn = document.getElementById('sendSystemBtn');
+    sendSystemBtn.addEventListener('click', async () => {
+      const content = systemMsg.value.trim();
+      if (!content) { showStatus('System message is required.', 'error'); return; }
+      sendSystemBtn.disabled = true;
+      try {
+        await api('/api/admin-system-message', { method: 'POST', body: JSON.stringify({ content }) });
+        systemMsg.value = '';
+        showStatus('System message sent.');
+      } catch (e) { showStatus(e.message, 'error'); }
+      finally { sendSystemBtn.disabled = false; }
+    });
+
+    addBanBtn.addEventListener('click', async () => {
+      const username = banUsername.value.trim();
+      const reason = banReason.value.trim();
+      if (!username) { showStatus('Username is required.', 'error'); return; }
+      addBanBtn.disabled = true;
+      try {
+        await api('/api/admin-bans', { method: 'POST', body: JSON.stringify({ username, reason }) });
+        banUsername.value = ''; banReason.value = '';
+        showStatus('User banned.');
+        await loadBans();
+      } catch (e) { showStatus(e.message, 'error'); }
+      finally { addBanBtn.disabled = false; }
+    });
+
+    bansBody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-ban-delete]');
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        await api('/api/admin-bans', { method: 'DELETE', body: JSON.stringify({ id: btn.dataset.banDelete }) });
+        showStatus('Ban removed.');
+        await loadBans();
+      } catch (e2) { showStatus(e2.message, 'error'); }
+      finally { btn.disabled = false; }
+    });
+
+    if (adminPassword) {
+      loginPanel.classList.add('hidden');
+      adminContent.classList.remove('hidden');
+      logoutBtn.classList.remove('hidden');
+      loadAll().catch(e => {
+        sessionStorage.removeItem('chat-admin-pw'); adminPassword = '';
+        adminContent.classList.add('hidden'); loginPanel.classList.remove('hidden'); logoutBtn.classList.add('hidden');
+        showStatus('Session expired or invalid password.', 'error');
+      });
+    }
+    setInterval(() => { if (adminPassword && !adminContent.classList.contains('hidden')) loadUsers().catch(e => console.warn('user refresh failed', e)); }, 20000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/.netlify/functions/:function",
+      "destination": "/api/:function"
+    },
+    {
+      "source": "/Admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/Admin/:path*",
+      "destination": "/admin.html"
+    }
+  ],
+  "functions": {
+    "api/[...path].js": {
+      "maxDuration": 60
+    }
+  }
+}
